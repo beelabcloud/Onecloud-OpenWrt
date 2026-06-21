@@ -310,6 +310,25 @@ jobs:
           - 🌐 Default IP: 192.168.2.3
           - 🔑 Default username: root
           - 🔑 Default password: password
+
+    - name: Archive OpenWrt Source Code
+      if: success()
+      run: |
+        echo "Creating a tarball of the openwrt build directory..."
+        # Exclude massive pre-compiled toolchains and temporary build directories to save space/time
+        tar -czf openwrt-source-code.tar.gz \
+          --exclude='openwrt/build_dir' \
+          --exclude='openwrt/staging_dir' \
+          --exclude='openwrt/toolchain' \
+          openwrt/
+
+    - name: Upload Source Code Tarball
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: OpenWrt_Source_Code_Tarball
+        path: openwrt-source-code.tar.gz
+        retention-days: 7
         
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@main
