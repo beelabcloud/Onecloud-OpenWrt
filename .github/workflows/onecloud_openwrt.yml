@@ -163,6 +163,11 @@ jobs:
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
 
+    - name: Update Go version for OpenWrt
+      run: |
+        rm -rf feeds/packages/lang/golang
+        git clone https://github.com/sbwml/packages_lang_golang -b 22.x feeds/packages/lang/golang
+
     - name: Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files
@@ -193,6 +198,25 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+        
+    - name: Archive OpenWrt Source Code
+      if: success()
+      run: |
+        echo "Creating a tarball of the openwrt build directory..."
+        # Exclude massive pre-compiled toolchains and temporary build directories to save space/time
+        tar -czf openwrt-source-code.tar.gz \
+          --exclude='openwrt/build_dir' \
+          --exclude='openwrt/staging_dir' \
+          --exclude='openwrt/toolchain' \
+          openwrt/
+
+    - name: Upload Source Code Tarball
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: OpenWrt_Source_Code_Tarball
+        path: openwrt-source-code.tar.gz
+        retention-days: 7
 
     - name: Compile the firmware
       id: compile
@@ -286,6 +310,8 @@ jobs:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
+    
+        
     - name: Generate release tag
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
@@ -318,25 +344,7 @@ jobs:
           - 🔑 Default username: root
           - 🔑 Default password: password
 
-    - name: Archive OpenWrt Source Code
-      if: success()
-      run: |
-        echo "Creating a tarball of the openwrt build directory..."
-        # Exclude massive pre-compiled toolchains and temporary build directories to save space/time
-        tar -czf openwrt-source-code.tar.gz \
-          --exclude='openwrt/build_dir' \
-          --exclude='openwrt/staging_dir' \
-          --exclude='openwrt/toolchain' \
-          openwrt/
-
-    - name: Upload Source Code Tarball
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: OpenWrt_Source_Code_Tarball
-        path: openwrt-source-code.tar.gz
-        retention-days: 7
-        
+    
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@main
       with:
